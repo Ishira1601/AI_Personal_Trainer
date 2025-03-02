@@ -1,0 +1,4 @@
+PoseVideos/
+__pycache__/
+
+*.mp4
