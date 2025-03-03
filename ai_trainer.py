@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from enum import IntEnum
-from pose_detector import PoseDetector, PoseLandmark
+from pose_detector_mp import PoseDetector, PoseLandmark
 
 class Exercise(IntEnum):
     DEADLIFT = 0
@@ -23,6 +23,10 @@ class AI_Trainer:
         match self.exercise:
             case Exercise.DEADLIFT:
                 self.deadlift(img)
+            case Exercise.BENCH_PRESS:
+                self.bench_press(img)
+            case Exercise.SQUAT:
+                self.squat(img)
             case default:
                 print("Exercise not found")
 
@@ -33,6 +37,8 @@ class AI_Trainer:
         length = self.detector.get_length(img, PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_WRIST)*100
         if length == PoseLandmark.INVALID_POSE_LANDMARK:
             length = self.detector.get_length(img, PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_WRIST)*100
+            if length == PoseLandmark.INVALID_POSE_LANDMARK:
+                return
 
         if length < 5 and not self.rep_complete:
             self.rep_complete = True
@@ -46,10 +52,30 @@ class AI_Trainer:
     def bench_press(self, img):
         self.detector.get_landmarks(img)
         self.detector.draw(img, False)
+        length = self.detector.get_length(img, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_WRIST)*100
+        if length == PoseLandmark.INVALID_POSE_LANDMARK:
+            length = self.detector.get_length(img, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_WRIST)*100
+            if length == PoseLandmark.INVALID_POSE_LANDMARK:
+                return
+
+        if length > 0 and length < 5 and not self.rep_complete:
+            self.rep_complete = True
+            print("Rep completed")
+            self.count += 1
+        if length > 8 and self.rep_complete:
+            self.rep_complete = False
+
+        cv2.rectangle(img, (0, 0), (100, 100), (255, 0, 0), -1)
+        cv2.putText(img, str(self.count), (15, 75), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+
+    def squat(self, img):
+        self.detector.get_landmarks(img)
+        self.detector.draw(img, True)
 
 
-cap = cv2.VideoCapture('PoseVideos/bench_press.mp4')
-ai_trainer = AI_Trainer(Exercise.DEADLIFT)
+
+cap = cv2.VideoCapture('PoseVideos/squat.mp4')
+ai_trainer = AI_Trainer(Exercise.SQUAT)
 
 while True:
     success, img = cap.read()
